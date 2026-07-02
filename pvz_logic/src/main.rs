@@ -104,6 +104,9 @@ struct ZombieSpawnTimer(Timer);
 #[derive(Component)]
 struct InfoText;
 
+#[derive(Component)]
+struct HoverHighlight;
+
 // --- REANIM STRUCTURES ---
 struct ReanimFrame {
     x: Option<f32>,
@@ -330,6 +333,7 @@ fn main() {
             sync_transforms,
             update_health_bars,
             update_info_text,
+            handle_mouse_hover,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_game_over.run_if(in_state(GameState::Playing)))
         .run();
@@ -382,6 +386,58 @@ fn setup(
         }
     }
     commands.insert_resource(ReanimTextures { handles: textures_map });
+
+    // Spawn grid border lines (horizontal and vertical)
+    // Horizontal lines
+    for r in 0..=GRID_ROWS {
+        let y = LAWN_ORIGIN_Y - r as f32 * CELL_HEIGHT;
+        commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgba(0.0, 0.0, 0.0, 0.2), // thin black line
+                custom_size: Some(Vec2::new(GRID_COLS as f32 * CELL_WIDTH, 2.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(
+                LAWN_ORIGIN_X + (GRID_COLS as f32 * CELL_WIDTH) / 2.0,
+                y,
+                0.5,
+            ),
+            ..default()
+        });
+    }
+
+    // Vertical lines
+    for c in 0..=GRID_COLS {
+        let x = LAWN_ORIGIN_X + c as f32 * CELL_WIDTH;
+        commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgba(0.0, 0.0, 0.0, 0.2),
+                custom_size: Some(Vec2::new(2.0, GRID_ROWS as f32 * CELL_HEIGHT)),
+                ..default()
+            },
+            transform: Transform::from_xyz(
+                x,
+                LAWN_ORIGIN_Y - (GRID_ROWS as f32 * CELL_HEIGHT) / 2.0,
+                0.5,
+            ),
+            ..default()
+        });
+    }
+
+    // Spawn global HoverHighlight entity
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                color: Color::srgba(1.0, 1.0, 1.0, 0.15), // glowing white overlay
+                custom_size: Some(Vec2::new(CELL_WIDTH - 4.0, CELL_HEIGHT - 4.0)),
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, 0.0, 0.6),
+            visibility: Visibility::Hidden,
+            ..default()
+        },
+        HoverHighlight,
+    ));
 
     // Column 1: Peashooters (Single) on Rows 0, 2, 4
     spawn_plant(&mut commands, "peashooter", 0, 1, &reanim_library);
@@ -482,6 +538,17 @@ fn spawn_plant(
             ReanimPart { track_index: idx },
         )).set_parent(plant_entity);
     }
+
+    // Spawn occupied grid cell highlight as a child
+    commands.spawn(SpriteBundle {
+        sprite: Sprite {
+            color: Color::srgba(0.2, 0.8, 0.2, 0.15), // Semi-transparent green
+            custom_size: Some(Vec2::new(CELL_WIDTH - 6.0, CELL_HEIGHT - 6.0)),
+            ..default()
+        },
+        transform: Transform::from_xyz(-offset_x, offset_y, -0.1),
+        ..default()
+    }).set_parent(plant_entity);
 
     spawn_health_bar(commands, plant_entity, 75.0);
 }
@@ -938,5 +1005,44 @@ fn update_info_text(
              Next spawn in: {:.1}s",
             plants_status, zombies_status, spawn_timer.0.remaining_secs()
         );
+    }
+}
+
+fn world_to_cell(world_pos: Vec2) -> Option<(usize, usize)> {
+    let x_rel = world_pos.x - LAWN_ORIGIN_X;
+    let y_rel = LAWN_ORIGIN_Y - world_pos.y;
+    
+    if x_rel >= 0.0 && x_rel < (GRID_COLS as f32 * CELL_WIDTH) &&
+       y_rel >= 0.0 && y_rel < (GRID_ROWS as f32 * CELL_HEIGHT) {
+        let col = (x_rel / CELL_WIDTH) as usize;
+        let row = (y_rel / CELL_HEIGHT) as usize;
+        Some((row, col))
+    } else {
+        None
+    }
+}
+
+fn handle_mouse_hover(
+    q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+    mut q_hover_tile: Query<(&mut Transform, &mut Visibility), With<HoverHighlight>>,
+) {
+    if let Ok(window) = q_window.get_single() {
+        if let Ok((camera, camera_transform)) = q_camera.get_single() {
+            if let Ok((mut hover_transform, mut hover_visibility)) = q_hover_tile.get_single_mut() {
+                if let Some(screen_pos) = window.cursor_position() {
+                    if let Some(world_pos) = camera.viewport_to_world_2d(camera_transform, screen_pos) {
+                        if let Some((row, col)) = world_to_cell(world_pos) {
+                            let cell_center = get_cell_center(row, col);
+                            hover_transform.translation.x = cell_center.x;
+                            hover_transform.translation.y = cell_center.y;
+                            *hover_visibility = Visibility::Inherited;
+                            return;
+                        }
+                    }
+                }
+                *hover_visibility = Visibility::Hidden;
+            }
+        }
     }
 }
