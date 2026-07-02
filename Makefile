@@ -4,7 +4,7 @@
 
 # Run the game
 run:
-	@. $(HOME)/.cargo/env && cargo run --manifest-path=pvz_logic/Cargo.toml
+	@. $(HOME)/.cargo/env && cargo run --manifest-path=pvz_logic/Cargo.toml --bin pvz_logic
 
 # Build the game binary
 build:
