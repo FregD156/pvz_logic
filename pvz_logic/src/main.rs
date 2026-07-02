@@ -310,7 +310,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Plants vs. Zombies - 5-Lane Checkered Lawn Showcase".into(),
-                resolution: (1000.0, 600.0).into(),
+                resolution: (1400.0, 600.0).into(),
                 ..default()
             }),
             ..default()
@@ -347,27 +347,13 @@ fn setup(
     // 2D Camera
     commands.spawn(Camera2dBundle::default());
 
-    // Render checkered lawn (Odd lanes: light green, Even lanes: dark green)
-    for r in 0..GRID_ROWS {
-        for c in 0..GRID_COLS {
-            let center = get_cell_center(r, c);
-            let color = if (r + c) % 2 == 0 {
-                Color::srgb(0.38, 0.65, 0.16) // Even cells: Dark green
-            } else {
-                Color::srgb(0.45, 0.72, 0.22) // Odd cells: Light green
-            };
-
-            commands.spawn(SpriteBundle {
-                sprite: Sprite {
-                    color,
-                    custom_size: Some(Vec2::new(CELL_WIDTH, CELL_HEIGHT)),
-                    ..default()
-                },
-                transform: Transform::from_xyz(center.x, center.y, 0.0),
-                ..default()
-            });
-        }
-    }
+    // Render panoramic lawn background image
+    let bg_handle = asset_server.load("PvZ_Assets/images/background1.jpg");
+    commands.spawn(SpriteBundle {
+        texture: bg_handle,
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        ..default()
+    });
 
     // Load all the required textures for all plants
     let mut textures_map = HashMap::new();
