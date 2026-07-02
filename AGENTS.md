@@ -118,3 +118,17 @@ Bộ hướng dẫn giúp hạn chế tối đa các lỗi lập trình phổ bi
     2. [Bước thực hiện 2] → xác minh bằng: [cách kiểm tra]
     ```
 *   **Lợi ích:** Tiêu chí thành công rõ ràng giúp AI tự lập trình và kiểm thử độc lập, hạn chế tối đa việc liên tục hỏi các câu làm rõ lặt vặt.
+
+---
+
+## 6. Tiện ích & Custom Skills hỗ trợ Tìm kiếm Tài nguyên
+
+Dự án có thiết lập một custom skill có tên là `pvz-asset-searcher` giúp các agent dễ dàng định vị các tệp hình ảnh, âm thanh hoặc cấu hình hoạt ảnh `.reanim` trong thư mục [PvZ_Assets/](file:///Users/fregd/Documents/code/playground/PvZ/PvZ_Assets).
+
+Để tìm kiếm một tài nguyên bất kỳ, agent có thể thực thi script tìm kiếm nhanh:
+```bash
+python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py "<từ_khóa>"
+```
+Ví dụ:
+*   Tìm tất cả các file liên quan đến Cattail: `python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py "Cattail"`
+*   Tìm tất cả file cấu hình reanim: `python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py ".reanim"`
