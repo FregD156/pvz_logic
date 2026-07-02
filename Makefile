@@ -22,6 +22,10 @@ clean:
 demo:
 	@. $(HOME)/.cargo/env && cargo run --manifest-path=pvz_logic/Cargo.toml --bin peashooter_demo
 
+# Run the grass sod rolling out demo
+sod:
+	@. $(HOME)/.cargo/env && cargo run --manifest-path=pvz_logic/Cargo.toml --bin sod_roll_demo
+
 # Show help options
 help:
 	@echo "Available commands:"
