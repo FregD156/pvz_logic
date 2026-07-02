@@ -3,7 +3,7 @@ import os
 import sys
 import re
 
-ASSETS_ROOT = "/Users/fregd/Documents/code/playground/PvZ/assets"
+ASSETS_ROOT = "/Users/fregd/Documents/code/playground/PvZ/pvz_logic/assets"
 
 STOP_WORDS = {
     # English stop words

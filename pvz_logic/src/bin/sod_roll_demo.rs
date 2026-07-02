@@ -25,16 +25,28 @@ struct SodCap {
 }
 
 fn main() {
+    let asset_path = if std::path::Path::new("pvz_logic/assets").exists() {
+        "pvz_logic/assets".to_string()
+    } else {
+        "assets".to_string()
+    };
+
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.05, 0.05, 0.08)))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "PvZ Grass Sod Roll Simulator".into(),
-                resolution: (1400.0, 600.0).into(),
+        .add_plugins(DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "PvZ Grass Sod Roll Simulator".into(),
+                    resolution: (1400.0, 600.0).into(),
+                    ..default()
+                }),
                 ..default()
-            }),
-            ..default()
-        }))
+            })
+            .set(AssetPlugin {
+                file_path: asset_path,
+                ..default()
+            })
+        )
         .insert_resource(RollState {
             progress: 0.0,
             active: true,

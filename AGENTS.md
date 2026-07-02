@@ -12,8 +12,7 @@ Dự án này là bản tái hiện lại logic game **Plants vs. Zombies** sử
 - **`pvz_logic/`**: Thư mục chứa project Rust / Bevy.
   - **`src/main.rs`**: Logic game hoàn chỉnh (Vòng lặp game 6 bước + Peashooter bắn Zombie + Đạn bay + Ăn cây + Trạng thái Game Over).
   - **`src/bin/peashooter_demo.rs`**: Scene trống để debug hoạt ảnh của Peashooter (phóng lớn 1.5 lần, nền tối, có crosshair debug).
-  - **`assets/PvZ_Assets/`**: Liên kết ảo (Symlink) trỏ tới thư mục chứa toàn bộ tài nguyên hình ảnh/âm thanh/hoạt ảnh đã được giải mã từ `main.pak`.
-- **`PvZ_Assets/`**: Thư mục chứa các tài nguyên thô (đã decrypt) dùng chung.
+  - **`assets/`**: Thư mục chứa toàn bộ tài nguyên hình ảnh/âm thanh/hoạt ảnh đã được giải mã từ `main.pak`.
 - **`docs/`**: Chứa tài liệu kỹ thuật, tiêu biểu là [reanim_assembly_guide.md](docs/reanim_assembly_guide.md).
 - **`Makefile`**: Interface tự động hóa các lệnh chạy/build/test.
 
@@ -123,7 +122,7 @@ Bộ hướng dẫn giúp hạn chế tối đa các lỗi lập trình phổ bi
 
 ## 6. Tiện ích & Custom Skills hỗ trợ Tìm kiếm Tài nguyên
 
-Dự án có thiết lập một custom skill có tên là `pvz-asset-searcher` giúp các agent dễ dàng định vị các tệp hình ảnh, âm thanh hoặc cấu hình hoạt ảnh `.reanim` trong thư mục [PvZ_Assets/](file:///Users/fregd/Documents/code/playground/PvZ/PvZ_Assets).
+Dự án có thiết lập một custom skill có tên là `pvz-asset-searcher` giúp các agent dễ dàng định vị các tệp hình ảnh, âm thanh hoặc cấu hình hoạt ảnh `.reanim` trong thư mục [assets/](file:///Users/fregd/Documents/code/playground/PvZ/pvz_logic/assets).
 
 Để tìm kiếm một tài nguyên bất kỳ, agent có thể thực thi script tìm kiếm nhanh:
 ```bash
