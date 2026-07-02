@@ -58,7 +58,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
 
     // Spawn Unsodded base background (Z = 0.0)
-    let unsodded_handle = asset_server.load("PvZ_Assets/images/background1unsodded.jpg");
+    let unsodded_handle = asset_server.load("images/background1unsodded.jpg");
     commands.spawn((
         SpriteBundle {
             texture: unsodded_handle,
@@ -69,7 +69,7 @@ fn setup(
     ));
 
     // Spawn Sod Layer (Z = 1.0)
-    let sod_handle = asset_server.load("PvZ_Assets/images/background1.jpg");
+    let sod_handle = asset_server.load("images/background1.jpg");
     commands.spawn((
         SpriteBundle {
             texture: sod_handle,
@@ -84,7 +84,7 @@ fn setup(
     ));
 
     // Spawn Sod Roll Cylinder (Z = 2.0)
-    let cylinder_handle = asset_server.load("PvZ_Assets/reanim/SodRoll.png");
+    let cylinder_handle = asset_server.load("reanim/SodRoll.png");
     commands.spawn((
         SpriteBundle {
             texture: cylinder_handle,
@@ -95,7 +95,7 @@ fn setup(
     ));
 
     // Spawn Sod Roll Cap (Top) (Z = 2.1)
-    let cap_handle = asset_server.load("PvZ_Assets/reanim/SodRollCap.png");
+    let cap_handle = asset_server.load("reanim/SodRollCap.png");
     commands.spawn((
         SpriteBundle {
             texture: cap_handle.clone(),
@@ -117,7 +117,7 @@ fn setup(
 
     // Play rolling audio immediately
     commands.spawn(AudioBundle {
-        source: asset_server.load("PvZ_Assets/sounds/roll_in.ogg"),
+        source: asset_server.load("sounds/roll_in.ogg"),
         ..default()
     });
 
@@ -171,9 +171,9 @@ fn update_sod_rendering(
 
     // 1. Get Sod properties based on roll type
     let (texture_path, left_x, total_width, cell_height, center_y) = match state.roll_type {
-        1 => ("PvZ_Assets/images/sod1row.jpg", -360.0, 771.0, 110.0, -15.0),
-        3 => ("PvZ_Assets/images/sod3row.jpg", -360.0, 771.0, 310.0, -15.0),
-        _ => ("PvZ_Assets/images/background1.jpg", -700.0, 1400.0, 480.0, 0.0),
+        1 => ("images/sod1row.jpg", -360.0, 771.0, 110.0, -15.0),
+        3 => ("images/sod3row.jpg", -360.0, 771.0, 310.0, -15.0),
+        _ => ("images/background1.jpg", -700.0, 1400.0, 480.0, 0.0),
     };
 
     // 2. Render Crop and Expansion
@@ -274,7 +274,7 @@ fn handle_inputs(
     if triggered {
         // Re-play roll audio
         commands.spawn(AudioBundle {
-            source: asset_server.load("PvZ_Assets/sounds/roll_in.ogg"),
+            source: asset_server.load("sounds/roll_in.ogg"),
             ..default()
         });
 

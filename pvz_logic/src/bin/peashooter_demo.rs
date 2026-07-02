@@ -68,44 +68,44 @@ struct ReanimTextures {
 fn get_image_path(resource: &str) -> Option<&'static str> {
     match resource {
         // Peashooter & Repeater parts
-        "IMAGE_REANIM_PEASHOOTER_BACKLEAF" => Some("PvZ_Assets/reanim/PeaShooter_backleaf.png"),
-        "IMAGE_REANIM_PEASHOOTER_BACKLEAF_LEFTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_lefttip.png"),
-        "IMAGE_REANIM_PEASHOOTER_BACKLEAF_RIGHTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_righttip.png"),
-        "IMAGE_REANIM_PEASHOOTER_BLINK1" => Some("PvZ_Assets/reanim/PeaShooter_blink1.png"),
-        "IMAGE_REANIM_PEASHOOTER_BLINK2" => Some("PvZ_Assets/reanim/PeaShooter_blink2.png"),
-        "IMAGE_REANIM_PEASHOOTER_EYEBROW" => Some("PvZ_Assets/reanim/PeaShooter_eyebrow.png"),
-        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF" => Some("PvZ_Assets/reanim/PeaShooter_frontleaf.png"),
-        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF_LEFTTIP" => Some("PvZ_Assets/reanim/PeaShooter_frontleaf_lefttip.png"),
-        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF_RIGHTTIP" => Some("PvZ_Assets/reanim/PeaShooter_frontleaf_righttip.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEAD" => Some("PvZ_Assets/reanim/PeaShooter_Head.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_2RDFARTHEST" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_2rdfarthest.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_3RDFARTHEST" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_3rdfarthest.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_FARTHEST" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_farthest.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_NEAREST" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_nearest.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_TIP_BOTTOM" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_tip_bottom.png"),
-        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_TIP_TOP" => Some("PvZ_Assets/reanim/PeaShooter_headleaf_tip_top.png"),
-        "IMAGE_REANIM_PEASHOOTER_LIPS" => Some("PvZ_Assets/reanim/PeaShooter_Lips.png"),
-        "IMAGE_REANIM_PEASHOOTER_MOUTH" => Some("PvZ_Assets/reanim/PeaShooter_mouth.png"),
-        "IMAGE_REANIM_PEASHOOTER_STALK_BOTTOM" => Some("PvZ_Assets/reanim/PeaShooter_stalk_bottom.png"),
-        "IMAGE_REANIM_PEASHOOTER_STALK_TOP" => Some("PvZ_Assets/reanim/PeaShooter_stalk_top.png"),
-        "IMAGE_REANIM_PEASHOOTER_SPROUT" => Some("PvZ_Assets/reanim/PeaShooter_sprout.png"),
-        "IMAGE_REANIM_ANIM_SPROUT" => Some("PvZ_Assets/reanim/anim_sprout.png"),
+        "IMAGE_REANIM_PEASHOOTER_BACKLEAF" => Some("reanim/PeaShooter_backleaf.png"),
+        "IMAGE_REANIM_PEASHOOTER_BACKLEAF_LEFTTIP" => Some("reanim/PeaShooter_backleaf_lefttip.png"),
+        "IMAGE_REANIM_PEASHOOTER_BACKLEAF_RIGHTTIP" => Some("reanim/PeaShooter_backleaf_righttip.png"),
+        "IMAGE_REANIM_PEASHOOTER_BLINK1" => Some("reanim/PeaShooter_blink1.png"),
+        "IMAGE_REANIM_PEASHOOTER_BLINK2" => Some("reanim/PeaShooter_blink2.png"),
+        "IMAGE_REANIM_PEASHOOTER_EYEBROW" => Some("reanim/PeaShooter_eyebrow.png"),
+        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF" => Some("reanim/PeaShooter_frontleaf.png"),
+        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF_LEFTTIP" => Some("reanim/PeaShooter_frontleaf_lefttip.png"),
+        "IMAGE_REANIM_PEASHOOTER_FRONTLEAF_RIGHTTIP" => Some("reanim/PeaShooter_frontleaf_righttip.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEAD" => Some("reanim/PeaShooter_Head.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_2RDFARTHEST" => Some("reanim/PeaShooter_headleaf_2rdfarthest.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_3RDFARTHEST" => Some("reanim/PeaShooter_headleaf_3rdfarthest.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_FARTHEST" => Some("reanim/PeaShooter_headleaf_farthest.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_NEAREST" => Some("reanim/PeaShooter_headleaf_nearest.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_TIP_BOTTOM" => Some("reanim/PeaShooter_headleaf_tip_bottom.png"),
+        "IMAGE_REANIM_PEASHOOTER_HEADLEAF_TIP_TOP" => Some("reanim/PeaShooter_headleaf_tip_top.png"),
+        "IMAGE_REANIM_PEASHOOTER_LIPS" => Some("reanim/PeaShooter_Lips.png"),
+        "IMAGE_REANIM_PEASHOOTER_MOUTH" => Some("reanim/PeaShooter_mouth.png"),
+        "IMAGE_REANIM_PEASHOOTER_STALK_BOTTOM" => Some("reanim/PeaShooter_stalk_bottom.png"),
+        "IMAGE_REANIM_PEASHOOTER_STALK_TOP" => Some("reanim/PeaShooter_stalk_top.png"),
+        "IMAGE_REANIM_PEASHOOTER_SPROUT" => Some("reanim/PeaShooter_sprout.png"),
+        "IMAGE_REANIM_ANIM_SPROUT" => Some("reanim/anim_sprout.png"),
         
         // Cattail parts
-        "IMAGE_REANIM_CATTAIL_TAIL2_OVERLAY" => Some("PvZ_Assets/reanim/Cattail_tail2_overlay.png"),
-        "IMAGE_REANIM_CATTAIL_SPIKE" => Some("PvZ_Assets/reanim/Cattail_spike.png"),
-        "IMAGE_REANIM_CATTAIL_TAIL2" => Some("PvZ_Assets/reanim/Cattail_tail2.png"),
-        "IMAGE_REANIM_CATTAIL_PAW1" => Some("PvZ_Assets/reanim/Cattail_paw1.png"),
-        "IMAGE_REANIM_CATTAIL_PAW3" => Some("PvZ_Assets/reanim/Cattail_paw3.png"),
-        "IMAGE_REANIM_CATTAIL_PAW2" => Some("PvZ_Assets/reanim/Cattail_paw2.png"),
-        "IMAGE_REANIM_CATTAIL_BLINK2" => Some("PvZ_Assets/reanim/Cattail_blink2.png"),
-        "IMAGE_REANIM_CATTAIL_BLINK1" => Some("PvZ_Assets/reanim/Cattail_blink1.png"),
-        "IMAGE_REANIM_CATTAIL_EYEBROW2" => Some("PvZ_Assets/reanim/Cattail_eyebrow2.png"),
-        "IMAGE_REANIM_CATTAIL_TAIL" => Some("PvZ_Assets/reanim/Cattail_tail.png"),
-        "IMAGE_REANIM_CATTAIL_HEAD" => Some("PvZ_Assets/reanim/Cattail_head.png"),
-        "IMAGE_REANIM_CATTAIL_EYEBROW1" => Some("PvZ_Assets/reanim/Cattail_eyebrow1.png"),
-        "IMAGE_REANIM_CATTAIL_HAT" => Some("PvZ_Assets/reanim/Cattail_hat.png"),
-        "IMAGE_REANIM_CATTAIL_BLINK" => Some("PvZ_Assets/reanim/Cattail_blink.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL2_OVERLAY" => Some("reanim/Cattail_tail2_overlay.png"),
+        "IMAGE_REANIM_CATTAIL_SPIKE" => Some("reanim/Cattail_spike.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL2" => Some("reanim/Cattail_tail2.png"),
+        "IMAGE_REANIM_CATTAIL_PAW1" => Some("reanim/Cattail_paw1.png"),
+        "IMAGE_REANIM_CATTAIL_PAW3" => Some("reanim/Cattail_paw3.png"),
+        "IMAGE_REANIM_CATTAIL_PAW2" => Some("reanim/Cattail_paw2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK2" => Some("reanim/Cattail_blink2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK1" => Some("reanim/Cattail_blink1.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW2" => Some("reanim/Cattail_eyebrow2.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL" => Some("reanim/Cattail_tail.png"),
+        "IMAGE_REANIM_CATTAIL_HEAD" => Some("reanim/Cattail_head.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW1" => Some("reanim/Cattail_eyebrow1.png"),
+        "IMAGE_REANIM_CATTAIL_HAT" => Some("reanim/Cattail_hat.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK" => Some("reanim/Cattail_blink.png"),
         _ => None,
     }
 }
@@ -204,17 +204,17 @@ fn parse_reanim(content: &str) -> Vec<ReanimTrackResolved> {
 
 fn main() {
     // 1. Read and parse Peashooter (Single)
-    let single_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooterSingle.reanim")
+    let single_xml = fs::read_to_string("assets/reanim/PeaShooterSingle.reanim")
         .expect("Failed to read PeaShooterSingle.reanim file.");
     let single_tracks = parse_reanim(&single_xml);
 
     // 2. Read and parse Repeater (Mohawk head leaves)
-    let repeater_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
+    let repeater_xml = fs::read_to_string("assets/reanim/PeaShooter.reanim")
         .expect("Failed to read PeaShooter.reanim file.");
     let repeater_tracks = parse_reanim(&repeater_xml);
 
     // 3. Read and parse Cattail
-    let cattail_xml = fs::read_to_string("assets/PvZ_Assets/reanim/Cattail.reanim")
+    let cattail_xml = fs::read_to_string("assets/reanim/Cattail.reanim")
         .expect("Failed to read Cattail.reanim file.");
     let cattail_tracks = parse_reanim(&cattail_xml);
 

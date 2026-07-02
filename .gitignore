@@ -1,5 +1,5 @@
 # PVZ Assets (Separate Repository)
-/PvZ_Assets/
+/assets/
 
 # Rust Build Targets
 /pvz_logic/target/
