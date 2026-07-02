@@ -1,22 +1,27 @@
 use bevy::prelude::*;
+use rand::Rng;
 use std::collections::HashMap;
 use std::fs;
 
-// Spatial configuration
-const LAWN_LEFT: f32 = -400.0;
-const LAWN_RIGHT: f32 = 400.0;
-const LAWN_Y: f32 = 0.0;
+// 2D Grid Configuration (checkered lawn)
+const GRID_ROWS: usize = 5;
+const GRID_COLS: usize = 9;
+const CELL_WIDTH: f32 = 80.0;
+const CELL_HEIGHT: f32 = 90.0;
+const LAWN_ORIGIN_X: f32 = -360.0; // Left edge of the lawn
+const LAWN_ORIGIN_Y: f32 = 220.0;  // Top edge of the lawn
 
-// Coordinate mapping: 0 to 1000 maps to LAWN_LEFT to LAWN_RIGHT
-fn map_x_to_screen(x: f32) -> f32 {
-    LAWN_LEFT + (x / 1000.0) * (LAWN_RIGHT - LAWN_LEFT)
+// Coordinate mapping helper
+fn get_cell_center(row: usize, col: usize) -> Vec2 {
+    Vec2::new(
+        LAWN_ORIGIN_X + col as f32 * CELL_WIDTH + CELL_WIDTH / 2.0,
+        LAWN_ORIGIN_Y - row as f32 * CELL_HEIGHT - CELL_HEIGHT / 2.0,
+    )
 }
 
-// Configuration constants
-const PLANT_X: f32 = 200.0; // Plant position at X=200
-const ZOMBIE_SPAWN_X: f32 = 1000.0; // Zombie spawn at X=1000
-const ZOMBIE_WALK_SPEED: f32 = 40.0;
-const BULLET_SPEED: f32 = 250.0;
+// Gameplay Constants
+const ZOMBIE_WALK_SPEED: f32 = 25.0;
+const BULLET_SPEED: f32 = 300.0;
 const BULLET_DAMAGE: f32 = 20.0;
 const PLANT_MAX_HP: f32 = 300.0;
 const ZOMBIE_MAX_HP: f32 = 100.0;
@@ -33,7 +38,10 @@ enum GameState {
 
 // Components
 #[derive(Component)]
-struct XPosition(f32);
+struct GridPosition {
+    row: usize,
+    col: usize,
+}
 
 #[derive(Component)]
 struct Health {
@@ -43,6 +51,7 @@ struct Health {
 
 #[derive(Component)]
 struct Plant {
+    anim_name: String, // "peashooter", "repeater", or "cattail"
     shoot_timer: Timer,
     anim_state: PlantAnimState,
     head_frame: usize,
@@ -63,11 +72,13 @@ struct ReanimPart {
 
 #[derive(Component)]
 struct Bullet {
+    row: usize,
     damage: f32,
 }
 
 #[derive(Component)]
 struct Zombie {
+    row: usize,
     speed: f32,
     state: ZombieState,
     eat_timer: Timer,
@@ -94,7 +105,6 @@ struct ZombieSpawnTimer(Timer);
 struct InfoText;
 
 // --- REANIM STRUCTURES ---
-#[allow(dead_code)]
 struct ReanimFrame {
     x: Option<f32>,
     y: Option<f32>,
@@ -125,8 +135,8 @@ struct ReanimTrackResolved {
 }
 
 #[derive(Resource)]
-struct ReanimData {
-    tracks: Vec<ReanimTrackResolved>,
+struct ReanimLibrary {
+    animations: HashMap<String, Vec<ReanimTrackResolved>>,
 }
 
 #[derive(Resource)]
@@ -137,6 +147,7 @@ struct ReanimTextures {
 // Mappings from XML resource string to local PNG path
 fn get_image_path(resource: &str) -> Option<&'static str> {
     match resource {
+        // Peashooter & Repeater parts
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF" => Some("PvZ_Assets/reanim/PeaShooter_backleaf.png"),
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF_LEFTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_lefttip.png"),
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF_RIGHTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_righttip.png"),
@@ -158,6 +169,23 @@ fn get_image_path(resource: &str) -> Option<&'static str> {
         "IMAGE_REANIM_PEASHOOTER_STALK_BOTTOM" => Some("PvZ_Assets/reanim/PeaShooter_stalk_bottom.png"),
         "IMAGE_REANIM_PEASHOOTER_STALK_TOP" => Some("PvZ_Assets/reanim/PeaShooter_stalk_top.png"),
         "IMAGE_REANIM_PEASHOOTER_SPROUT" => Some("PvZ_Assets/reanim/PeaShooter_sprout.png"),
+        "IMAGE_REANIM_ANIM_SPROUT" => Some("PvZ_Assets/reanim/anim_sprout.png"),
+
+        // Cattail parts
+        "IMAGE_REANIM_CATTAIL_TAIL2_OVERLAY" => Some("PvZ_Assets/reanim/Cattail_tail2_overlay.png"),
+        "IMAGE_REANIM_CATTAIL_SPIKE" => Some("PvZ_Assets/reanim/Cattail_spike.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL2" => Some("PvZ_Assets/reanim/Cattail_tail2.png"),
+        "IMAGE_REANIM_CATTAIL_PAW1" => Some("PvZ_Assets/reanim/Cattail_paw1.png"),
+        "IMAGE_REANIM_CATTAIL_PAW3" => Some("PvZ_Assets/reanim/Cattail_paw3.png"),
+        "IMAGE_REANIM_CATTAIL_PAW2" => Some("PvZ_Assets/reanim/Cattail_paw2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK2" => Some("PvZ_Assets/reanim/Cattail_blink2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK1" => Some("PvZ_Assets/reanim/Cattail_blink1.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW2" => Some("PvZ_Assets/reanim/Cattail_eyebrow2.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL" => Some("PvZ_Assets/reanim/Cattail_tail.png"),
+        "IMAGE_REANIM_CATTAIL_HEAD" => Some("PvZ_Assets/reanim/Cattail_head.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW1" => Some("PvZ_Assets/reanim/Cattail_eyebrow1.png"),
+        "IMAGE_REANIM_CATTAIL_HAT" => Some("PvZ_Assets/reanim/Cattail_hat.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK" => Some("PvZ_Assets/reanim/Cattail_blink.png"),
         _ => None,
     }
 }
@@ -255,24 +283,38 @@ fn parse_reanim(content: &str) -> Vec<ReanimTrackResolved> {
 }
 
 fn main() {
-    // Read and parse reanim file at setup time
-    let xml_content = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
-        .expect("Failed to read PeaShooter.reanim file. Ensure assets symlink is set up!");
-    let parsed_tracks = parse_reanim(&xml_content);
-    println!("Successfully parsed {} tracks from PeaShooter.reanim", parsed_tracks.len());
+    // 1. Read and parse Peashooter (Single)
+    let single_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooterSingle.reanim")
+        .expect("Failed to read PeaShooterSingle.reanim file.");
+    let single_tracks = parse_reanim(&single_xml);
+
+    // 2. Read and parse Repeater (PeaShooter.reanim)
+    let repeater_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
+        .expect("Failed to read PeaShooter.reanim file.");
+    let repeater_tracks = parse_reanim(&repeater_xml);
+
+    // 3. Read and parse Cattail
+    let cattail_xml = fs::read_to_string("assets/PvZ_Assets/reanim/Cattail.reanim")
+        .expect("Failed to read Cattail.reanim file.");
+    let cattail_tracks = parse_reanim(&cattail_xml);
+
+    let mut library = HashMap::new();
+    library.insert("peashooter".to_string(), single_tracks);
+    library.insert("repeater".to_string(), repeater_tracks);
+    library.insert("cattail".to_string(), cattail_tracks);
 
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Plants vs. Zombies - Animated Peashooter Showcase".into(),
+                title: "Plants vs. Zombies - 5-Lane Checkered Lawn Showcase".into(),
                 resolution: (1000.0, 600.0).into(),
                 ..default()
             }),
             ..default()
         }))
         .init_state::<GameState>()
-        .insert_resource(ReanimData { tracks: parsed_tracks })
-        .insert_resource(ZombieSpawnTimer(Timer::from_seconds(8.0, TimerMode::Repeating)))
+        .insert_resource(ReanimLibrary { animations: library })
+        .insert_resource(ZombieSpawnTimer(Timer::from_seconds(6.0, TimerMode::Repeating)))
         .add_systems(Startup, setup)
         .add_systems(Update, (
             tick_timers,
@@ -288,7 +330,6 @@ fn main() {
             sync_transforms,
             update_health_bars,
             update_info_text,
-            handle_keyboard_triggers,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_game_over.run_if(in_state(GameState::Playing)))
         .run();
@@ -297,52 +338,44 @@ fn main() {
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    reanim_data: Res<ReanimData>,
+    reanim_library: Res<ReanimLibrary>,
 ) {
     // 2D Camera
     commands.spawn(Camera2dBundle::default());
 
-    // Background lawn line
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: Color::srgb(0.12, 0.38, 0.12),
-            custom_size: Some(Vec2::new(LAWN_RIGHT - LAWN_LEFT + 100.0, 160.0)),
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, LAWN_Y - 40.0, 0.0),
-        ..default()
-    });
+    // Render checkered lawn (Odd lanes: light green, Even lanes: dark green)
+    for r in 0..GRID_ROWS {
+        for c in 0..GRID_COLS {
+            let center = get_cell_center(r, c);
+            let color = if (r + c) % 2 == 0 {
+                Color::srgb(0.38, 0.65, 0.16) // Even cells: Dark green
+            } else {
+                Color::srgb(0.45, 0.72, 0.22) // Odd cells: Light green
+            };
 
-    // Marker lines
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: Color::srgb(0.2, 0.5, 0.2),
-            custom_size: Some(Vec2::new(10.0, 180.0)),
-            ..default()
-        },
-        transform: Transform::from_xyz(map_x_to_screen(PLANT_X), LAWN_Y - 40.0, 1.0),
-        ..default()
-    });
+            commands.spawn(SpriteBundle {
+                sprite: Sprite {
+                    color,
+                    custom_size: Some(Vec2::new(CELL_WIDTH, CELL_HEIGHT)),
+                    ..default()
+                },
+                transform: Transform::from_xyz(center.x, center.y, 0.0),
+                ..default()
+            });
+        }
+    }
 
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: Color::srgb(0.6, 0.2, 0.2),
-            custom_size: Some(Vec2::new(10.0, 180.0)),
-            ..default()
-        },
-        transform: Transform::from_xyz(map_x_to_screen(ZOMBIE_SPAWN_X), LAWN_Y - 40.0, 1.0),
-        ..default()
-    });
-
-    // Load all the required Peashooter textures and store them
+    // Load all the required textures for all plants
     let mut textures_map = HashMap::new();
-    for track in &reanim_data.tracks {
-        for frame in &track.frames {
-            if let Some(ref img_res) = frame.image {
-                if !textures_map.contains_key(img_res) {
-                    if let Some(file_path) = get_image_path(img_res) {
-                        let handle = asset_server.load(file_path);
-                        textures_map.insert(img_res.clone(), handle);
+    for tracks in reanim_library.animations.values() {
+        for track in tracks {
+            for frame in &track.frames {
+                if let Some(ref img_res) = frame.image {
+                    if !textures_map.contains_key(img_res) {
+                        if let Some(file_path) = get_image_path(img_res) {
+                            let handle = asset_server.load(file_path);
+                            textures_map.insert(img_res.clone(), handle);
+                        }
                     }
                 }
             }
@@ -350,23 +383,29 @@ fn setup(
     }
     commands.insert_resource(ReanimTextures { handles: textures_map });
 
-    // Spawn the Plant at X=200
-    spawn_plant(&mut commands, PLANT_X, &reanim_data);
+    // Column 1: Peashooters (Single) on Rows 0, 2, 4
+    spawn_plant(&mut commands, "peashooter", 0, 1, &reanim_library);
+    spawn_plant(&mut commands, "peashooter", 2, 1, &reanim_library);
+    spawn_plant(&mut commands, "peashooter", 4, 1, &reanim_library);
 
-    // Initial Zombie at X=1000
-    spawn_zombie_at(&mut commands, ZOMBIE_SPAWN_X);
+    // Column 2: Repeaters (Double) on Rows 1, 3
+    spawn_plant(&mut commands, "repeater", 1, 2, &reanim_library);
+    spawn_plant(&mut commands, "repeater", 3, 2, &reanim_library);
+
+    // Column 3: Cattail on Row 2
+    spawn_plant(&mut commands, "cattail", 2, 2, &reanim_library);
 
     // On-screen UI instructions
     commands.spawn((
         TextBundle::from_section(
-            "Plants vs. Zombies - Bevy Animated Peashooter\n\
-             Assembled from 19 parts in PeaShooter.reanim\n\n\
-             Key triggers:\n\
-             [Press 1]: Trigger Idle Animation (frames 4-28)\n\
-             [Press 2]: Trigger Head Idle Animation (frames 29-53)\n\
-             [Press 3]: Trigger Shooting Animation (frames 54-78)\n\
-             [Press 4]: Trigger Full Idle Animation (frames 79-103)\n\n\
-             Peashooter shoots a pea when Zombie enters range!",
+            "Plants vs. Zombies - 5-Lane Checkered Lawn\n\
+             =======================================\n\n\
+             Pre-planted layout:\n\
+             - Col 1: Peashooters (bắn 1 đạn)\n\
+             - Col 2: Repeaters (bắn 2 đạn)\n\
+             - Col 3: Cattails (bắn gai đuôi mèo)\n\n\
+             Zombies spawn randomly in different lanes!\n\
+             Bullets and collision checks are lane-based.",
             TextStyle {
                 font_size: 16.0,
                 color: Color::WHITE,
@@ -383,33 +422,49 @@ fn setup(
     ));
 }
 
-fn spawn_plant(commands: &mut Commands, x: f32, reanim_data: &ReanimData) {
-    // Spawn the parent plant entity
-    // We position the parent offset so that the bottom of the stalk sits correctly on lawn
+fn spawn_plant(
+    commands: &mut Commands,
+    anim_name: &str,
+    row: usize,
+    col: usize,
+    reanim_library: &ReanimLibrary,
+) {
+    let center = get_cell_center(row, col);
+    
+    // Choose start frame based on type
+    let start_frame = if anim_name == "cattail" { 5 } else { 79 };
+
+    // Parent Plant Entity
+    // Shifts coordinates slightly left/up so anchor matches cell center
+    let offset_x = if anim_name == "cattail" { -25.0 } else { -25.0 };
+    let offset_y = if anim_name == "cattail" { 20.0 } else { 45.0 };
+
     let plant_entity = commands.spawn((
         SpatialBundle {
-            transform: Transform::from_xyz(map_x_to_screen(x) - 30.0, LAWN_Y + 60.0, 2.0),
+            transform: Transform::from_xyz(center.x + offset_x, center.y - offset_y, 2.0).with_scale(Vec3::splat(0.85)),
             ..default()
         },
-        XPosition(x),
+        GridPosition { row, col },
         Health {
             hp: PLANT_MAX_HP,
             max_hp: PLANT_MAX_HP,
         },
         Plant {
+            anim_name: anim_name.to_string(),
             shoot_timer: Timer::from_seconds(PLANT_SHOOT_COOLDOWN, TimerMode::Repeating),
             anim_state: PlantAnimState::Idle,
-            head_frame: 79,
-            stem_frame: 79,
+            head_frame: start_frame,
+            stem_frame: start_frame,
             anim_timer: Timer::from_seconds(1.0 / 12.0, TimerMode::Repeating),
         },
     )).id();
 
-    // Spawn the body parts as children
-    for (idx, track) in reanim_data.tracks.iter().enumerate() {
-        // Skip controllers
+    // Spawn body parts as children
+    let tracks = reanim_library.animations.get(anim_name).unwrap();
+    for (idx, track) in tracks.iter().enumerate() {
         if track.name == "anim_idle"
             || track.name == "anim_shooting"
+            || track.name == "anim_blink"
             || track.name == "anim_head_idle"
             || track.name == "anim_full_idle"
         {
@@ -428,11 +483,14 @@ fn spawn_plant(commands: &mut Commands, x: f32, reanim_data: &ReanimData) {
         )).set_parent(plant_entity);
     }
 
-    // Spawn Plant's health bar
-    spawn_health_bar(commands, plant_entity, 70.0);
+    spawn_health_bar(commands, plant_entity, 75.0);
 }
 
-fn spawn_zombie_at(commands: &mut Commands, x: f32) {
+fn spawn_zombie_at(commands: &mut Commands, row: usize) {
+    // Spawn at right edge of row
+    let center = get_cell_center(row, 8);
+    let spawn_x = center.x + 100.0;
+
     let zombie_entity = commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -440,18 +498,18 @@ fn spawn_zombie_at(commands: &mut Commands, x: f32) {
                 custom_size: Some(Vec2::new(45.0, 80.0)),
                 ..default()
             },
-            transform: Transform::from_xyz(map_x_to_screen(x), LAWN_Y - 20.0, 2.0),
+            transform: Transform::from_xyz(spawn_x, center.y + 10.0, 2.0),
             ..default()
         },
-        XPosition(x),
-        Health {
-            hp: ZOMBIE_MAX_HP,
-            max_hp: ZOMBIE_MAX_HP,
-        },
         Zombie {
+            row,
             speed: ZOMBIE_WALK_SPEED,
             state: ZombieState::Walking,
             eat_timer: Timer::from_seconds(ZOMBIE_EAT_COOLDOWN, TimerMode::Repeating),
+        },
+        Health {
+            hp: ZOMBIE_MAX_HP,
+            max_hp: ZOMBIE_MAX_HP,
         },
     )).id();
 
@@ -512,57 +570,91 @@ fn tick_timers(
 
 fn spawn_zombies(mut commands: Commands, spawn_timer: Res<ZombieSpawnTimer>) {
     if spawn_timer.0.just_finished() {
-        spawn_zombie_at(&mut commands, ZOMBIE_SPAWN_X);
-        info!("A new Zombie spawned at X={}", ZOMBIE_SPAWN_X);
+        let mut rng = rand::thread_rng();
+        let row = rng.gen_range(0..GRID_ROWS);
+        spawn_zombie_at(&mut commands, row);
+        info!("A new Zombie spawned in Lane/Row {}", row);
     }
 }
 
-fn zombie_movement(time: Res<Time>, mut query: Query<(&mut XPosition, &Zombie)>) {
-    for (mut pos, zombie) in &mut query {
+fn zombie_movement(time: Res<Time>, mut query: Query<(&mut Transform, &Zombie)>) {
+    for (mut transform, zombie) in &mut query {
         if zombie.state == ZombieState::Walking {
-            pos.0 -= zombie.speed * time.delta_seconds();
-            if pos.0 < 0.0 {
-                pos.0 = 0.0;
-            }
+            transform.translation.x -= zombie.speed * time.delta_seconds();
         }
     }
 }
 
-// Plant shooting logic (triggers animation state)
+// Plant shooting logic (lane-based)
 fn plant_shooting(
     mut commands: Commands,
-    mut plant_query: Query<(&XPosition, &mut Plant)>,
-    zombie_query: Query<&XPosition, With<Zombie>>,
+    mut plant_query: Query<(&Transform, &GridPosition, &mut Plant)>,
+    zombie_query: Query<(&Transform, &Zombie)>,
 ) {
-    for (plant_pos, mut plant) in &mut plant_query {
-        let zombie_in_range = zombie_query.iter().any(|z_pos| z_pos.0 > plant_pos.0);
+    for (plant_transform, grid_pos, mut plant) in &mut plant_query {
+        // Find if there is any zombie in the same row ahead of the plant
+        let zombie_in_range = zombie_query.iter().any(|(z_trans, zombie)| {
+            zombie.row == grid_pos.row && z_trans.translation.x > plant_transform.translation.x
+        });
 
         if zombie_in_range {
             if plant.shoot_timer.finished() {
-                // Spawn a new Pea Bullet entity
-                commands.spawn((
-                    SpriteBundle {
-                        sprite: Sprite {
-                            color: Color::srgb(0.9, 0.9, 0.1),
-                            custom_size: Some(Vec2::new(14.0, 14.0)),
-                            ..default()
-                        },
-                        // Position slightly higher to match Peashooter mouth height
-                        transform: Transform::from_xyz(map_x_to_screen(plant_pos.0) + 10.0, LAWN_Y + 10.0, 3.0),
-                        ..default()
-                    },
-                    XPosition(plant_pos.0 + 10.0),
-                    Bullet {
-                        damage: BULLET_DAMAGE,
-                    },
-                ));
-                
+                let start_x = plant_transform.translation.x + 20.0;
+                let start_y = plant_transform.translation.y + 15.0;
+
+                // Spawn bullets based on plant type
+                match plant.anim_name.as_str() {
+                    "repeater" => {
+                        // Repeater shoots 2 bullets close to each other
+                        for offset in &[0.0, -18.0] {
+                            commands.spawn((
+                                SpriteBundle {
+                                    sprite: Sprite {
+                                        color: Color::srgb(0.9, 0.9, 0.1),
+                                        custom_size: Some(Vec2::new(14.0, 14.0)),
+                                        ..default()
+                                    },
+                                    transform: Transform::from_xyz(start_x + offset, start_y, 3.0),
+                                    ..default()
+                                },
+                                Bullet {
+                                    row: grid_pos.row,
+                                    damage: BULLET_DAMAGE,
+                                },
+                            ));
+                        }
+                    }
+                    _ => {
+                        // Peashooter and Cattail shoot 1 bullet
+                        let color = if plant.anim_name == "cattail" {
+                            Color::srgb(1.0, 0.4, 0.6) // Cattail shoots pink spikes
+                        } else {
+                            Color::srgb(0.9, 0.9, 0.1) // Peashooter shoots yellow peas
+                        };
+
+                        commands.spawn((
+                            SpriteBundle {
+                                sprite: Sprite {
+                                    color,
+                                    custom_size: Some(Vec2::new(14.0, 14.0)),
+                                    ..default()
+                                },
+                                transform: Transform::from_xyz(start_x, start_y, 3.0),
+                                ..default()
+                            },
+                            Bullet {
+                                row: grid_pos.row,
+                                damage: BULLET_DAMAGE,
+                            },
+                        ));
+                    }
+                }
+
                 // Trigger Shooting animation
                 plant.anim_state = PlantAnimState::Shooting;
-                plant.head_frame = 54;
-                
+                plant.head_frame = if plant.anim_name == "cattail" { 24 } else { 54 };
+
                 plant.shoot_timer.reset();
-                info!("Peashooter shot a bullet and triggered Shooting anim!");
             }
         } else {
             plant.shoot_timer.reset();
@@ -570,9 +662,9 @@ fn plant_shooting(
     }
 }
 
-// Animation system for Peashooter
+// Animation system for all plants
 fn animate_plant(
-    reanim_data: Res<ReanimData>,
+    reanim_library: Res<ReanimLibrary>,
     reanim_textures: Res<ReanimTextures>,
     mut plant_query: Query<(Entity, &mut Plant)>,
     parent_query: Query<&Children>,
@@ -580,87 +672,99 @@ fn animate_plant(
 ) {
     for (plant_entity, mut plant) in &mut plant_query {
         if plant.anim_timer.just_finished() {
-            // 1. Update stem frame (always loops full idle 79-103)
-            plant.stem_frame += 1;
-            if plant.stem_frame > 103 {
-                plant.stem_frame = 79;
-            }
-
-            // 2. Update head frame based on animation state
-            match plant.anim_state {
-                PlantAnimState::Idle => {
-                    plant.head_frame = plant.stem_frame;
+            if plant.anim_name == "cattail" {
+                plant.stem_frame += 1;
+                if plant.stem_frame > 23 {
+                    plant.stem_frame = 5;
                 }
-                PlantAnimState::Shooting => {
-                    plant.head_frame += 1;
-                    if plant.head_frame > 78 || plant.head_frame < 54 {
-                        plant.anim_state = PlantAnimState::Idle; // Go back to Idle after shoot completes
+
+                match plant.anim_state {
+                    PlantAnimState::Idle => {
                         plant.head_frame = plant.stem_frame;
+                    }
+                    PlantAnimState::Shooting => {
+                        plant.head_frame += 1;
+                        if plant.head_frame > 39 || plant.head_frame < 24 {
+                            plant.anim_state = PlantAnimState::Idle;
+                            plant.head_frame = plant.stem_frame;
+                        }
+                    }
+                }
+            } else {
+                plant.stem_frame += 1;
+                if plant.stem_frame > 103 {
+                    plant.stem_frame = 79;
+                }
+
+                match plant.anim_state {
+                    PlantAnimState::Idle => {
+                        plant.head_frame = plant.stem_frame;
+                    }
+                    PlantAnimState::Shooting => {
+                        plant.head_frame += 1;
+                        if plant.head_frame > 78 || plant.head_frame < 54 {
+                            plant.anim_state = PlantAnimState::Idle;
+                            plant.head_frame = plant.stem_frame;
+                        }
                     }
                 }
             }
         }
 
-        // Apply animations to parts (children)
+        // Apply transformations
         if let Ok(children) = parent_query.get(plant_entity) {
-            for &child in children {
-                if let Ok((part, mut sprite, mut transform, mut visibility, mut texture)) = part_query.get_mut(child) {
-                    let track = &reanim_data.tracks[part.track_index];
-                    
-                    // Fetch head frame data
-                    let head_frame_data = if plant.head_frame < track.frames.len() {
-                        Some(&track.frames[plant.head_frame])
-                    } else {
-                        None
-                    };
+            if let Some(tracks) = reanim_library.animations.get(&plant.anim_name) {
+                for &child in children {
+                    if let Ok((part, mut sprite, mut transform, mut visibility, mut texture)) = part_query.get_mut(child) {
+                        let track = &tracks[part.track_index];
+                        
+                        let head_frame_data = if plant.head_frame < track.frames.len() {
+                            Some(&track.frames[plant.head_frame])
+                        } else {
+                            None
+                        };
 
-                    // Fetch stem frame data
-                    let stem_frame_data = if plant.stem_frame < track.frames.len() {
-                        Some(&track.frames[plant.stem_frame])
-                    } else {
-                        None
-                    };
+                        let stem_frame_data = if plant.stem_frame < track.frames.len() {
+                            Some(&track.frames[plant.stem_frame])
+                        } else {
+                            None
+                        };
 
-                    // Determine which frame data to use:
-                    // If the track is visible in the head frame, we use the head frame (Shooting / FullIdle).
-                    // If the track is NOT visible in the head frame, it falls back to the stem frame (FullIdle).
-                    let target_frame_data = if let Some(head_data) = head_frame_data {
-                        if head_data.visible {
-                            Some(head_data)
+                        let target_frame_data = if let Some(head_data) = head_frame_data {
+                            if head_data.visible {
+                                Some(head_data)
+                            } else {
+                                stem_frame_data
+                            }
                         } else {
                             stem_frame_data
-                        }
-                    } else {
-                        stem_frame_data
-                    };
+                        };
 
-                    if let Some(frame_data) = target_frame_data {
-                        if frame_data.visible {
-                            *visibility = Visibility::Inherited;
-                            
-                            if let Some(ref img_res) = frame_data.image {
-                                if let Some(handle) = reanim_textures.handles.get(img_res) {
-                                    *texture = handle.clone();
-                                    sprite.custom_size = None;
+                        if let Some(frame_data) = target_frame_data {
+                            if frame_data.visible {
+                                *visibility = Visibility::Inherited;
+                                
+                                if let Some(ref img_res) = frame_data.image {
+                                    if let Some(handle) = reanim_textures.handles.get(img_res) {
+                                        *texture = handle.clone();
+                                        sprite.custom_size = None;
+                                    }
                                 }
+                                
+                                transform.translation.x = frame_data.x * 0.8;
+                                transform.translation.y = -frame_data.y * 0.8;
+                                transform.translation.z = part.track_index as f32 * 0.01;
+                                
+                                transform.scale.x = frame_data.sx * 0.8;
+                                transform.scale.y = frame_data.sy * 0.8;
+                                
+                                transform.rotation = Quat::from_rotation_z(-frame_data.kx.to_radians());
+                            } else {
+                                *visibility = Visibility::Hidden;
                             }
-                            
-                            // Align position
-                            transform.translation.x = frame_data.x * 0.8;
-                            transform.translation.y = -frame_data.y * 0.8;
-                            transform.translation.z = part.track_index as f32 * 0.01;
-                            
-                            // Scale
-                            transform.scale.x = frame_data.sx * 0.8;
-                            transform.scale.y = frame_data.sy * 0.8;
-                            
-                            // Rotate around local origin (TopLeft anchor)
-                            transform.rotation = Quat::from_rotation_z(-frame_data.kx.to_radians());
                         } else {
                             *visibility = Visibility::Hidden;
                         }
-                    } else {
-                        *visibility = Visibility::Hidden;
                     }
                 }
             }
@@ -668,93 +772,113 @@ fn animate_plant(
     }
 }
 
-fn bullet_movement(time: Res<Time>, mut query: Query<&mut XPosition, With<Bullet>>) {
-    for mut pos in &mut query {
-        pos.0 += BULLET_SPEED * time.delta_seconds();
+fn bullet_movement(time: Res<Time>, mut query: Query<&mut Transform, With<Bullet>>) {
+    for mut transform in &mut query {
+        transform.translation.x += BULLET_SPEED * time.delta_seconds();
     }
 }
 
+// Lane-based bullet collision
 fn bullet_collision(
     mut commands: Commands,
-    bullet_query: Query<(Entity, &XPosition, &Bullet)>,
-    mut zombie_query: Query<(Entity, &XPosition, &mut Health), With<Zombie>>,
+    bullet_query: Query<(Entity, &Transform, &Bullet)>,
+    mut zombie_query: Query<(Entity, &Transform, &mut Health, &Zombie)>,
 ) {
-    for (bullet_entity, bullet_pos, bullet) in &bullet_query {
-        for (zombie_entity, zombie_pos, mut zombie_health) in &mut zombie_query {
-            if (bullet_pos.0 - zombie_pos.0).abs() < 12.0 {
-                zombie_health.hp -= bullet.damage;
-                info!("Bullet hit Zombie! Zombie HP: {}", zombie_health.hp);
+    for (bullet_entity, bullet_trans, bullet) in &bullet_query {
+        for (zombie_entity, zombie_trans, mut zombie_health, zombie) in &mut zombie_query {
+            // Must be in the same row
+            if bullet.row == zombie.row {
+                let dist = (bullet_trans.translation.x - zombie_trans.translation.x).abs();
+                if dist < 15.0 {
+                    zombie_health.hp -= bullet.damage;
+                    info!("Bullet hit Zombie in Row {}! Zombie HP: {}", zombie.row, zombie_health.hp);
 
-                commands.entity(bullet_entity).despawn_recursive();
+                    commands.entity(bullet_entity).despawn_recursive();
 
-                if zombie_health.hp <= 0.0 {
-                    commands.entity(zombie_entity).despawn_recursive();
-                    info!("Zombie died!");
+                    if zombie_health.hp <= 0.0 {
+                        commands.entity(zombie_entity).despawn_recursive();
+                        info!("Zombie died in Row {}!", zombie.row);
+                    }
+                    break;
                 }
-                break;
             }
         }
     }
 }
 
+// Lane-based zombie eating attack
 fn zombie_attack(
-    plant_query: Query<&XPosition, With<Plant>>,
-    mut zombie_query: Query<(&XPosition, &mut Zombie)>,
+    plant_query: Query<(&Transform, &GridPosition)>,
+    mut zombie_query: Query<(&Transform, &mut Zombie)>,
 ) {
-    if let Ok(plant_pos) = plant_query.get_single() {
-        for (zombie_pos, mut zombie) in &mut zombie_query {
-            if zombie.state == ZombieState::Walking && zombie_pos.0 <= plant_pos.0 {
-                zombie.state = ZombieState::Eating;
-                zombie.speed = 0.0;
-                info!("Zombie reached Peashooter and started EATING!");
+    for (plant_trans, grid_pos) in &plant_query {
+        for (zombie_trans, mut zombie) in &mut zombie_query {
+            // Must be in the same row and zombie is close to the plant
+            if zombie.row == grid_pos.row && zombie.state == ZombieState::Walking {
+                let dist = zombie_trans.translation.x - plant_trans.translation.x;
+                // If zombie is directly on or slightly to the right of the plant
+                if dist <= 12.0 && dist > -15.0 {
+                    zombie.state = ZombieState::Eating;
+                    zombie.speed = 0.0;
+                    info!("Zombie in Row {} reached Plant and started eating!", zombie.row);
+                }
             }
         }
     }
 }
 
+// Lane-based zombie eating damage
 fn zombie_eating(
     mut commands: Commands,
-    mut plant_query: Query<(Entity, &mut Health), With<Plant>>,
+    mut plant_query: Query<(Entity, &Transform, &GridPosition, &mut Health), With<Plant>>,
     zombie_query: Query<&Zombie>,
 ) {
-    if let Ok((plant_entity, mut plant_health)) = plant_query.get_single_mut() {
+    for (plant_entity, _, grid_pos, mut plant_health) in &mut plant_query {
         let eating_count = zombie_query
             .iter()
-            .filter(|z| z.state == ZombieState::Eating && z.eat_timer.just_finished())
+            .filter(|z| {
+                z.row == grid_pos.row
+                    && z.state == ZombieState::Eating
+                    && z.eat_timer.just_finished()
+            })
             .count();
 
         if eating_count > 0 {
             let total_damage = eating_count as f32 * ZOMBIE_EAT_DAMAGE;
             plant_health.hp -= total_damage;
-            info!("Peashooter is being eaten! Plant HP: {}", plant_health.hp);
+            info!(
+                "Plant in Row {}, Col {} is being eaten! HP: {}",
+                grid_pos.row, grid_pos.col, plant_health.hp
+            );
 
             if plant_health.hp <= 0.0 {
                 commands.entity(plant_entity).despawn_recursive();
-                info!("Peashooter was eaten!");
+                info!("Plant in Row {}, Col {} was eaten!", grid_pos.row, grid_pos.col);
             }
         }
     }
 }
 
+// Release eating zombies if their plant died
 fn plant_death(
-    plant_query: Query<&Plant>,
+    plant_query: Query<&GridPosition, With<Plant>>,
     mut zombie_query: Query<&mut Zombie>,
 ) {
-    if plant_query.is_empty() {
-        for mut zombie in &mut zombie_query {
-            if zombie.state == ZombieState::Eating {
+    for mut zombie in &mut zombie_query {
+        if zombie.state == ZombieState::Eating {
+            // Check if any plant still exists in the same row at the column the zombie is eating
+            let plant_exists = plant_query.iter().any(|gp| gp.row == zombie.row);
+            if !plant_exists {
                 zombie.state = ZombieState::Walking;
                 zombie.speed = ZOMBIE_WALK_SPEED;
-                info!("Lawn cleared. Zombie resumed walking!");
+                info!("Lawn row {} cleared. Zombie resumed walking!", zombie.row);
             }
         }
     }
 }
 
-fn sync_transforms(mut query: Query<(&XPosition, &mut Transform)>) {
-    for (pos, mut transform) in &mut query {
-        transform.translation.x = map_x_to_screen(pos.0);
-    }
+fn sync_transforms() {
+    // Spatial positioning is fully mapped at spawn/movement, no separate sync needed
 }
 
 fn update_health_bars(
@@ -772,13 +896,14 @@ fn update_health_bars(
     }
 }
 
+// Check if any zombie reached the house (X < -440.0)
 fn check_game_over(
-    zombie_query: Query<&XPosition, With<Zombie>>,
+    zombie_query: Query<&Transform, With<Zombie>>,
     mut state: ResMut<NextState<GameState>>,
 ) {
-    for pos in &zombie_query {
-        if pos.0 <= 10.0 {
-            info!("A zombie reached the house! GAME OVER!");
+    for trans in &zombie_query {
+        if trans.translation.x <= -420.0 {
+            info!("A Zombie crossed the lawn and reached your house! GAME OVER!");
             state.set(GameState::GameOver);
             break;
         }
@@ -786,72 +911,32 @@ fn check_game_over(
 }
 
 fn update_info_text(
-    plant_query: Query<&Health, With<Plant>>,
-    zombie_query: Query<(&Health, &XPosition), With<Zombie>>,
+    plant_query: Query<(&Health, &GridPosition), With<Plant>>,
+    zombie_query: Query<(&Health, &Transform, &Zombie)>,
     mut text_query: Query<&mut Text, With<InfoText>>,
     spawn_timer: Res<ZombieSpawnTimer>,
 ) {
     if let Ok(mut text) = text_query.get_single_mut() {
-        let plant_status = if let Ok(health) = plant_query.get_single() {
-            format!("HP: {:.1}/{:.1}", health.hp, health.max_hp)
-        } else {
-            "DECEASED".to_string()
-        };
-
-        let mut zombie_status = String::new();
-        for (idx, (health, pos)) in zombie_query.iter().enumerate() {
-            zombie_status.push_str(&format!(
-                "\n  Zombie #{}: HP={:.1}, X={:.1}",
-                idx + 1, health.hp, pos.0
+        let plants_status = format!("Plants Alive: {}", plant_query.iter().count());
+        let mut zombies_status = String::new();
+        
+        for (idx, (health, trans, zombie)) in zombie_query.iter().enumerate() {
+            zombies_status.push_str(&format!(
+                "\n  Zombie #{}: Row={}, HP={:.1}, X={:.1}",
+                idx + 1, zombie.row, health.hp, trans.translation.x
             ));
         }
-        if zombie_status.is_empty() {
-            zombie_status = "\n  No zombies on the lawn.".to_string();
+        if zombies_status.is_empty() {
+            zombies_status = "\n  No zombies on the lawn.".to_string();
         }
 
         text.sections[0].value = format!(
-            "Plants vs. Zombies - Bevy Animated Peashooter\n\
-             Assembled from 19 parts in PeaShooter.reanim\n\n\
-             Peashooter Status: {}\n\n\
-             Key triggers:\n\
-             [Press 1]: Trigger Idle Animation (frames 4-28)\n\
-             [Press 2]: Trigger Head Idle Animation (frames 29-53)\n\
-             [Press 3]: Trigger Shooting Animation (frames 54-78)\n\
-             [Press 4]: Trigger Full Idle Animation (frames 79-103)\n\n\
-             [Active Zombies]: {}\n\n\
+            "Plants vs. Zombies - 5-Lane Checkered Lawn\n\
+             =======================================\n\n\
+             Defenses Status: {}\n\n\
+             Zombies on Lawn: {}\n\n\
              Next spawn in: {:.1}s",
-            plant_status, zombie_status, spawn_timer.0.remaining_secs()
+            plants_status, zombies_status, spawn_timer.0.remaining_secs()
         );
-    }
-}
-
-// Allows user to manually trigger different animation loops for testing
-fn handle_keyboard_triggers(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut plant_query: Query<&mut Plant>,
-) {
-    for mut plant in &mut plant_query {
-        if keyboard_input.just_pressed(KeyCode::Digit1) {
-            plant.anim_state = PlantAnimState::Idle;
-            plant.head_frame = 79;
-            plant.stem_frame = 79;
-            info!("Manually triggered Idle Animation loop");
-        }
-        if keyboard_input.just_pressed(KeyCode::Digit2) {
-            plant.anim_state = PlantAnimState::Shooting;
-            plant.head_frame = 29;
-            info!("Manually triggered Head Idle Animation (29-53)");
-        }
-        if keyboard_input.just_pressed(KeyCode::Digit3) {
-            plant.anim_state = PlantAnimState::Shooting;
-            plant.head_frame = 54;
-            info!("Manually triggered Shooting Animation (54-78)");
-        }
-        if keyboard_input.just_pressed(KeyCode::Digit4) {
-            plant.anim_state = PlantAnimState::Idle;
-            plant.head_frame = 79;
-            plant.stem_frame = 79;
-            info!("Manually triggered Full Idle Animation (79-103)");
-        }
     }
 }
