@@ -1,0 +1,10 @@
+# PVZ Assets (Separate Repository)
+/PvZ_Assets/
+
+# Rust Build Targets
+/pvz_logic/target/
+target/
+
+# OS Temp Files
+.DS_Store
+Thumbs.db
