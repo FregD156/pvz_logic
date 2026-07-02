@@ -127,8 +127,8 @@ Dự án có thiết lập một custom skill có tên là `pvz-asset-searcher` 
 
 Để tìm kiếm một tài nguyên bất kỳ, agent có thể thực thi script tìm kiếm nhanh:
 ```bash
-python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py "<từ_khóa>"
+python3 .agents/pvz_asset_searcher/scripts/find_asset.py "<từ_khóa>"
 ```
 Ví dụ:
-*   Tìm tất cả các file liên quan đến Cattail: `python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py "Cattail"`
-*   Tìm tất cả file cấu hình reanim: `python3 /Users/fregd/.gemini/config/skills/pvz_asset_searcher/scripts/find_asset.py ".reanim"`
+*   Tìm tất cả các file liên quan đến Cattail: `python3 .agents/pvz_asset_searcher/scripts/find_asset.py "Cattail"`
+*   Tìm tất cả file cấu hình reanim: `python3 .agents/pvz_asset_searcher/scripts/find_asset.py ".reanim"`
