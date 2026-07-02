@@ -4,6 +4,7 @@ use std::fs;
 
 #[derive(Component)]
 struct Plant {
+    anim_name: String, // "peashooter" or "repeater"
     anim_state: PlantAnimState,
     head_frame: usize,
     stem_frame: usize,
@@ -54,8 +55,8 @@ struct ReanimTrackResolved {
 }
 
 #[derive(Resource)]
-struct ReanimData {
-    tracks: Vec<ReanimTrackResolved>,
+struct ReanimLibrary {
+    animations: HashMap<String, Vec<ReanimTrackResolved>>,
 }
 
 #[derive(Resource)]
@@ -87,6 +88,7 @@ fn get_image_path(resource: &str) -> Option<&'static str> {
         "IMAGE_REANIM_PEASHOOTER_STALK_BOTTOM" => Some("PvZ_Assets/reanim/PeaShooter_stalk_bottom.png"),
         "IMAGE_REANIM_PEASHOOTER_STALK_TOP" => Some("PvZ_Assets/reanim/PeaShooter_stalk_top.png"),
         "IMAGE_REANIM_PEASHOOTER_SPROUT" => Some("PvZ_Assets/reanim/PeaShooter_sprout.png"),
+        "IMAGE_REANIM_ANIM_SPROUT" => Some("PvZ_Assets/reanim/anim_sprout.png"),
         _ => None,
     }
 }
@@ -184,22 +186,31 @@ fn parse_reanim(content: &str) -> Vec<ReanimTrackResolved> {
 }
 
 fn main() {
-    let xml_content = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
-        .expect("Failed to read PeaShooter.reanim file. Ensure assets symlink is set up!");
-    let parsed_tracks = parse_reanim(&xml_content);
-    println!("Successfully parsed {} tracks from PeaShooter.reanim", parsed_tracks.len());
+    // 1. Read and parse Peashooter (Single)
+    let single_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooterSingle.reanim")
+        .expect("Failed to read PeaShooterSingle.reanim file.");
+    let single_tracks = parse_reanim(&single_xml);
+
+    // 2. Read and parse Repeater (PeaShooter.reanim contains the Mohawk leaves of the Repeater)
+    let repeater_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
+        .expect("Failed to read PeaShooter.reanim file.");
+    let repeater_tracks = parse_reanim(&repeater_xml);
+
+    let mut library = HashMap::new();
+    library.insert("peashooter".to_string(), single_tracks);
+    library.insert("repeater".to_string(), repeater_tracks);
 
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.1, 0.1, 0.15)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Peashooter Animation Debugger (TopLeft Anchored)".into(),
-                resolution: (800.0, 600.0).into(),
+                title: "Peashooter vs Repeater Animation Debugger".into(),
+                resolution: (1000.0, 600.0).into(),
                 ..default()
             }),
             ..default()
         }))
-        .insert_resource(ReanimData { tracks: parsed_tracks })
+        .insert_resource(ReanimLibrary { animations: library })
         .add_systems(Startup, setup)
         .add_systems(Update, (
             tick_timers,
@@ -212,40 +223,33 @@ fn main() {
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    reanim_data: Res<ReanimData>,
+    reanim_library: Res<ReanimLibrary>,
 ) {
     // 2D Camera
     commands.spawn(Camera2dBundle::default());
 
-    // Center grid/crosshair lines for coordinate debug
+    // Center grid lines for layout debug
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::srgba(1.0, 1.0, 1.0, 0.1),
-            custom_size: Some(Vec2::new(800.0, 2.0)),
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, 0.0, 0.0),
-        ..default()
-    });
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: Color::srgba(1.0, 1.0, 1.0, 0.1),
-            custom_size: Some(Vec2::new(2.0, 600.0)),
+            color: Color::srgba(1.0, 1.0, 1.0, 0.05),
+            custom_size: Some(Vec2::new(1000.0, 2.0)),
             ..default()
         },
         transform: Transform::from_xyz(0.0, 0.0, 0.0),
         ..default()
     });
 
-    // Load all the required Peashooter textures and store them
+    // Load all the required textures for both plants and store them
     let mut textures_map = HashMap::new();
-    for track in &reanim_data.tracks {
-        for frame in &track.frames {
-            if let Some(ref img_res) = frame.image {
-                if !textures_map.contains_key(img_res) {
-                    if let Some(file_path) = get_image_path(img_res) {
-                        let handle = asset_server.load(file_path);
-                        textures_map.insert(img_res.clone(), handle);
+    for tracks in reanim_library.animations.values() {
+        for track in tracks {
+            for frame in &track.frames {
+                if let Some(ref img_res) = frame.image {
+                    if !textures_map.contains_key(img_res) {
+                        if let Some(file_path) = get_image_path(img_res) {
+                            let handle = asset_server.load(file_path);
+                            textures_map.insert(img_res.clone(), handle);
+                        }
                     }
                 }
             }
@@ -253,13 +257,14 @@ fn setup(
     }
     commands.insert_resource(ReanimTextures { handles: textures_map });
 
-    // Spawn the Plant centered
-    let plant_entity = commands.spawn((
+    // Spawn 1. PeaShooter (Single) on the left
+    let peashooter_entity = commands.spawn((
         SpatialBundle {
-            transform: Transform::from_xyz(-30.0, 40.0, 2.0).with_scale(Vec3::splat(1.5)),
+            transform: Transform::from_xyz(-180.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
             ..default()
         },
         Plant {
+            anim_name: "peashooter".to_string(),
             anim_state: PlantAnimState::Idle,
             head_frame: 79,
             stem_frame: 79,
@@ -267,8 +272,8 @@ fn setup(
         },
     )).id();
 
-    // Spawn the body parts as children with Anchor::TopLeft
-    for (idx, track) in reanim_data.tracks.iter().enumerate() {
+    // Spawn PeaShooter parts
+    for (idx, track) in reanim_library.animations.get("peashooter").unwrap().iter().enumerate() {
         if track.name == "anim_idle"
             || track.name == "anim_shooting"
             || track.name == "anim_head_idle"
@@ -286,20 +291,86 @@ fn setup(
                 ..default()
             },
             ReanimPart { track_index: idx },
-        )).set_parent(plant_entity);
+        )).set_parent(peashooter_entity);
     }
+
+    // Spawn labels for plants
+    commands.spawn(Text2dBundle {
+        text: Text::from_section(
+            "Peashooter (Single)\n[PeaShooterSingle.reanim]",
+            TextStyle {
+                font_size: 18.0,
+                color: Color::srgb(0.7, 1.0, 0.7),
+                ..default()
+            },
+        ).with_justify(JustifyText::Center),
+        transform: Transform::from_xyz(-180.0, -120.0, 3.0),
+        ..default()
+    });
+
+
+    // Spawn 2. Repeater on the right (uses PeaShooter.reanim containing Mohawk head leaves)
+    let repeater_entity = commands.spawn((
+        SpatialBundle {
+            transform: Transform::from_xyz(180.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
+            ..default()
+        },
+        Plant {
+            anim_name: "repeater".to_string(),
+            anim_state: PlantAnimState::Idle,
+            head_frame: 79,
+            stem_frame: 79,
+            anim_timer: Timer::from_seconds(1.0 / 12.0, TimerMode::Repeating),
+        },
+    )).id();
+
+    // Spawn Repeater parts
+    for (idx, track) in reanim_library.animations.get("repeater").unwrap().iter().enumerate() {
+        if track.name == "anim_idle"
+            || track.name == "anim_shooting"
+            || track.name == "anim_head_idle"
+            || track.name == "anim_full_idle"
+        {
+            continue;
+        }
+
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    anchor: bevy::sprite::Anchor::TopLeft,
+                    ..default()
+                },
+                ..default()
+            },
+            ReanimPart { track_index: idx },
+        )).set_parent(repeater_entity);
+    }
+
+    commands.spawn(Text2dBundle {
+        text: Text::from_section(
+            "Repeater\n[PeaShooter.reanim]",
+            TextStyle {
+                font_size: 18.0,
+                color: Color::srgb(0.5, 0.9, 0.9),
+                ..default()
+            },
+        ).with_justify(JustifyText::Center),
+        transform: Transform::from_xyz(180.0, -120.0, 3.0),
+        ..default()
+    });
+
 
     // On-screen UI instructions
     commands.spawn(
         TextBundle::from_section(
-            "Peashooter Debug Scene (TopLeft Anchored Assembly)\n\
-             ================================================\n\n\
-             Overlaying Stem & Head Tracks!\n\n\
+            "Peashooter & Repeater Side-by-Side Showcase\n\
+             ==========================================\n\n\
+             Both plants run identical Blending logic, dynamically resolving their respective assets!\n\n\
              Key triggers:\n\
-             [Press 1]: Trigger Idle Animation (Full Peashooter idle - looping 79-103)\n\
+             [Press 1]: Trigger Idle Animation (Full Idle - looping 79-103)\n\
              [Press 2]: Trigger Head Idle Animation (Only head animates - looping 29-53)\n\
              [Press 3]: Trigger Shooting Animation (Head shoots - 54-78, Stem stays idle)\n\
-             [Press 4]: Trigger Full Idle Animation (Full Peashooter idle - looping 79-103)",
+             [Press 4]: Trigger Full Idle Animation (Full Idle - looping 79-103)",
             TextStyle {
                 font_size: 16.0,
                 color: Color::WHITE,
@@ -322,9 +393,9 @@ fn tick_timers(time: Res<Time>, mut plant_query: Query<&mut Plant>) {
     }
 }
 
-// Animation system for Peashooter
+// Animation system for Peashooter & Repeater
 fn animate_plant(
-    reanim_data: Res<ReanimData>,
+    reanim_library: Res<ReanimLibrary>,
     reanim_textures: Res<ReanimTextures>,
     mut plant_query: Query<(Entity, &mut Plant)>,
     parent_query: Query<&Children>,
@@ -361,64 +432,65 @@ fn animate_plant(
 
         // Apply animations to parts (children)
         if let Ok(children) = parent_query.get(plant_entity) {
-            for &child in children {
-                if let Ok((part, mut sprite, mut transform, mut visibility, mut texture)) = part_query.get_mut(child) {
-                    let track = &reanim_data.tracks[part.track_index];
-                    
-                    // Fetch head frame data
-                    let head_frame_data = if plant.head_frame < track.frames.len() {
-                        Some(&track.frames[plant.head_frame])
-                    } else {
-                        None
-                    };
+            // Retrieve tracks list for this plant name
+            if let Some(tracks) = reanim_library.animations.get(&plant.anim_name) {
+                for &child in children {
+                    if let Ok((part, mut sprite, mut transform, mut visibility, mut texture)) = part_query.get_mut(child) {
+                        let track = &tracks[part.track_index];
+                        
+                        // Fetch head frame data
+                        let head_frame_data = if plant.head_frame < track.frames.len() {
+                            Some(&track.frames[plant.head_frame])
+                        } else {
+                            None
+                        };
 
-                    // Fetch stem frame data
-                    let stem_frame_data = if plant.stem_frame < track.frames.len() {
-                        Some(&track.frames[plant.stem_frame])
-                    } else {
-                        None
-                    };
+                        // Fetch stem frame data
+                        let stem_frame_data = if plant.stem_frame < track.frames.len() {
+                            Some(&track.frames[plant.stem_frame])
+                        } else {
+                            None
+                        };
 
-                    // Determine which frame data to use:
-                    // If the track is visible in the head frame, we use the head frame (Shooting / HeadIdle / FullIdle).
-                    // If the track is NOT visible in the head frame, it falls back to the stem frame (FullIdle).
-                    let target_frame_data = if let Some(head_data) = head_frame_data {
-                        if head_data.visible {
-                            Some(head_data)
+                        // Blending Rule
+                        let target_frame_data = if let Some(head_data) = head_frame_data {
+                            if head_data.visible {
+                                Some(head_data)
+                            } else {
+                                stem_frame_data
+                            }
                         } else {
                             stem_frame_data
-                        }
-                    } else {
-                        stem_frame_data
-                    };
+                        };
 
-                    if let Some(frame_data) = target_frame_data {
-                        if frame_data.visible {
-                            *visibility = Visibility::Inherited;
-                            
-                            if let Some(ref img_res) = frame_data.image {
-                                if let Some(handle) = reanim_textures.handles.get(img_res) {
-                                    *texture = handle.clone();
-                                    sprite.custom_size = None;
+                        if let Some(frame_data) = target_frame_data {
+                            if frame_data.visible {
+                                *visibility = Visibility::Inherited;
+                                
+                                if let Some(ref img_res) = frame_data.image {
+                                    if let Some(handle) = reanim_textures.handles.get(img_res) {
+                                        *texture = handle.clone();
+                                        sprite.custom_size = None;
+                                    }
                                 }
+                                
+                                // Align position
+                                transform.translation.x = frame_data.x;
+                                transform.translation.y = -frame_data.y;
+                                transform.translation.z = part.track_index as f32 * 0.01;
+                                
+                                // Scale
+                                transform.scale.x = frame_data.sx;
+                                transform.scale.y = frame_data.sy;
+                                
+                                // Rotate around local origin (TopLeft anchor)
+                                transform.rotation = Quat::from_rotation_z(-frame_data.kx.to_radians());
+                            } else {
+                                *visibility = Visibility::Hidden;
                             }
-                            
-                            // Align position
-                            transform.translation.x = frame_data.x;
-                            transform.translation.y = -frame_data.y;
-                            transform.translation.z = part.track_index as f32 * 0.01;
-                            
-                            // Scale
-                            transform.scale.x = frame_data.sx;
-                            transform.scale.y = frame_data.sy;
-                            
-                            // Rotate around local origin (TopLeft anchor)
-                            transform.rotation = Quat::from_rotation_z(-frame_data.kx.to_radians());
                         } else {
                             *visibility = Visibility::Hidden;
                         }
-                    } else {
-                        *visibility = Visibility::Hidden;
                     }
                 }
             }
@@ -436,7 +508,7 @@ fn handle_keyboard_triggers(
             plant.anim_state = PlantAnimState::Idle;
             plant.head_frame = 79;
             plant.stem_frame = 79;
-            info!("Switched state to Idle (Full Peashooter idle)");
+            info!("Switched state to Idle (Full Plant idle)");
         }
         if keyboard_input.just_pressed(KeyCode::Digit2) {
             plant.anim_state = PlantAnimState::HeadIdle;
@@ -452,7 +524,7 @@ fn handle_keyboard_triggers(
             plant.anim_state = PlantAnimState::FullIdle;
             plant.head_frame = 79;
             plant.stem_frame = 79;
-            info!("Switched state to Full Idle (Full Peashooter idle)");
+            info!("Switched state to Full Idle (Full Plant idle)");
         }
     }
 }
