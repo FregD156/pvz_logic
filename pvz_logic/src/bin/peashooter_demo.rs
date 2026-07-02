@@ -4,7 +4,7 @@ use std::fs;
 
 #[derive(Component)]
 struct Plant {
-    anim_name: String, // "peashooter" or "repeater"
+    anim_name: String, // "peashooter", "repeater", or "cattail"
     anim_state: PlantAnimState,
     head_frame: usize,
     stem_frame: usize,
@@ -67,6 +67,7 @@ struct ReanimTextures {
 // Mappings from XML resource string to local PNG path
 fn get_image_path(resource: &str) -> Option<&'static str> {
     match resource {
+        // Peashooter & Repeater parts
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF" => Some("PvZ_Assets/reanim/PeaShooter_backleaf.png"),
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF_LEFTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_lefttip.png"),
         "IMAGE_REANIM_PEASHOOTER_BACKLEAF_RIGHTTIP" => Some("PvZ_Assets/reanim/PeaShooter_backleaf_righttip.png"),
@@ -89,6 +90,22 @@ fn get_image_path(resource: &str) -> Option<&'static str> {
         "IMAGE_REANIM_PEASHOOTER_STALK_TOP" => Some("PvZ_Assets/reanim/PeaShooter_stalk_top.png"),
         "IMAGE_REANIM_PEASHOOTER_SPROUT" => Some("PvZ_Assets/reanim/PeaShooter_sprout.png"),
         "IMAGE_REANIM_ANIM_SPROUT" => Some("PvZ_Assets/reanim/anim_sprout.png"),
+        
+        // Cattail parts
+        "IMAGE_REANIM_CATTAIL_TAIL2_OVERLAY" => Some("PvZ_Assets/reanim/Cattail_tail2_overlay.png"),
+        "IMAGE_REANIM_CATTAIL_SPIKE" => Some("PvZ_Assets/reanim/Cattail_spike.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL2" => Some("PvZ_Assets/reanim/Cattail_tail2.png"),
+        "IMAGE_REANIM_CATTAIL_PAW1" => Some("PvZ_Assets/reanim/Cattail_paw1.png"),
+        "IMAGE_REANIM_CATTAIL_PAW3" => Some("PvZ_Assets/reanim/Cattail_paw3.png"),
+        "IMAGE_REANIM_CATTAIL_PAW2" => Some("PvZ_Assets/reanim/Cattail_paw2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK2" => Some("PvZ_Assets/reanim/Cattail_blink2.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK1" => Some("PvZ_Assets/reanim/Cattail_blink1.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW2" => Some("PvZ_Assets/reanim/Cattail_eyebrow2.png"),
+        "IMAGE_REANIM_CATTAIL_TAIL" => Some("PvZ_Assets/reanim/Cattail_tail.png"),
+        "IMAGE_REANIM_CATTAIL_HEAD" => Some("PvZ_Assets/reanim/Cattail_head.png"),
+        "IMAGE_REANIM_CATTAIL_EYEBROW1" => Some("PvZ_Assets/reanim/Cattail_eyebrow1.png"),
+        "IMAGE_REANIM_CATTAIL_HAT" => Some("PvZ_Assets/reanim/Cattail_hat.png"),
+        "IMAGE_REANIM_CATTAIL_BLINK" => Some("PvZ_Assets/reanim/Cattail_blink.png"),
         _ => None,
     }
 }
@@ -191,20 +208,26 @@ fn main() {
         .expect("Failed to read PeaShooterSingle.reanim file.");
     let single_tracks = parse_reanim(&single_xml);
 
-    // 2. Read and parse Repeater (PeaShooter.reanim contains the Mohawk leaves of the Repeater)
+    // 2. Read and parse Repeater (Mohawk head leaves)
     let repeater_xml = fs::read_to_string("assets/PvZ_Assets/reanim/PeaShooter.reanim")
         .expect("Failed to read PeaShooter.reanim file.");
     let repeater_tracks = parse_reanim(&repeater_xml);
 
+    // 3. Read and parse Cattail
+    let cattail_xml = fs::read_to_string("assets/PvZ_Assets/reanim/Cattail.reanim")
+        .expect("Failed to read Cattail.reanim file.");
+    let cattail_tracks = parse_reanim(&cattail_xml);
+
     let mut library = HashMap::new();
     library.insert("peashooter".to_string(), single_tracks);
     library.insert("repeater".to_string(), repeater_tracks);
+    library.insert("cattail".to_string(), cattail_tracks);
 
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.1, 0.1, 0.15)))
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "Peashooter vs Repeater Animation Debugger".into(),
+                title: "PvZ Plant Animation Debugger (Peashooter, Repeater, Cattail)".into(),
                 resolution: (1000.0, 600.0).into(),
                 ..default()
             }),
@@ -239,7 +262,7 @@ fn setup(
         ..default()
     });
 
-    // Load all the required textures for both plants and store them
+    // Load all the required textures and store them
     let mut textures_map = HashMap::new();
     for tracks in reanim_library.animations.values() {
         for track in tracks {
@@ -257,10 +280,10 @@ fn setup(
     }
     commands.insert_resource(ReanimTextures { handles: textures_map });
 
-    // Spawn 1. PeaShooter (Single) on the left
+    // Spawn 1. PeaShooter (Single) on the left (X = -300)
     let peashooter_entity = commands.spawn((
         SpatialBundle {
-            transform: Transform::from_xyz(-180.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
+            transform: Transform::from_xyz(-300.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
             ..default()
         },
         Plant {
@@ -294,25 +317,24 @@ fn setup(
         )).set_parent(peashooter_entity);
     }
 
-    // Spawn labels for plants
     commands.spawn(Text2dBundle {
         text: Text::from_section(
             "Peashooter (Single)\n[PeaShooterSingle.reanim]",
             TextStyle {
-                font_size: 18.0,
+                font_size: 16.0,
                 color: Color::srgb(0.7, 1.0, 0.7),
                 ..default()
             },
         ).with_justify(JustifyText::Center),
-        transform: Transform::from_xyz(-180.0, -120.0, 3.0),
+        transform: Transform::from_xyz(-300.0, -120.0, 3.0),
         ..default()
     });
 
 
-    // Spawn 2. Repeater on the right (uses PeaShooter.reanim containing Mohawk head leaves)
+    // Spawn 2. Repeater in the center (X = 0)
     let repeater_entity = commands.spawn((
         SpatialBundle {
-            transform: Transform::from_xyz(180.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
+            transform: Transform::from_xyz(0.0, -50.0, 2.0).with_scale(Vec3::splat(1.5)),
             ..default()
         },
         Plant {
@@ -350,12 +372,65 @@ fn setup(
         text: Text::from_section(
             "Repeater\n[PeaShooter.reanim]",
             TextStyle {
-                font_size: 18.0,
+                font_size: 16.0,
                 color: Color::srgb(0.5, 0.9, 0.9),
                 ..default()
             },
         ).with_justify(JustifyText::Center),
-        transform: Transform::from_xyz(180.0, -120.0, 3.0),
+        transform: Transform::from_xyz(0.0, -120.0, 3.0),
+        ..default()
+    });
+
+
+    // Spawn 3. Cattail on the right (X = 300)
+    let cattail_entity = commands.spawn((
+        SpatialBundle {
+            // Offset slightly to center the cat body nicely
+            transform: Transform::from_xyz(260.0, -20.0, 2.0).with_scale(Vec3::splat(1.5)),
+            ..default()
+        },
+        Plant {
+            anim_name: "cattail".to_string(),
+            anim_state: PlantAnimState::Idle,
+            head_frame: 5,
+            stem_frame: 5,
+            anim_timer: Timer::from_seconds(1.0 / 12.0, TimerMode::Repeating),
+        },
+    )).id();
+
+    // Spawn Cattail parts
+    for (idx, track) in reanim_library.animations.get("cattail").unwrap().iter().enumerate() {
+        if track.name == "anim_idle"
+            || track.name == "anim_shooting"
+            || track.name == "anim_blink"
+            || track.name == "anim_head_idle"
+            || track.name == "anim_full_idle"
+        {
+            continue;
+        }
+
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    anchor: bevy::sprite::Anchor::TopLeft,
+                    ..default()
+                },
+                ..default()
+            },
+            ReanimPart { track_index: idx },
+        )).set_parent(cattail_entity);
+    }
+
+    commands.spawn(Text2dBundle {
+        text: Text::from_section(
+            "Cattail\n[Cattail.reanim]",
+            TextStyle {
+                font_size: 16.0,
+                color: Color::srgb(1.0, 0.7, 0.8),
+                ..default()
+            },
+        ).with_justify(JustifyText::Center),
+        transform: Transform::from_xyz(300.0, -120.0, 3.0),
         ..default()
     });
 
@@ -363,14 +438,14 @@ fn setup(
     // On-screen UI instructions
     commands.spawn(
         TextBundle::from_section(
-            "Peashooter & Repeater Side-by-Side Showcase\n\
-             ==========================================\n\n\
-             Both plants run identical Blending logic, dynamically resolving their respective assets!\n\n\
+            "PvZ Plant Animation Debugger\n\
+             ============================\n\n\
+             Assembled side-by-side using TopLeft coordinate anchoring.\n\n\
              Key triggers:\n\
-             [Press 1]: Trigger Idle Animation (Full Idle - looping 79-103)\n\
-             [Press 2]: Trigger Head Idle Animation (Only head animates - looping 29-53)\n\
-             [Press 3]: Trigger Shooting Animation (Head shoots - 54-78, Stem stays idle)\n\
-             [Press 4]: Trigger Full Idle Animation (Full Idle - looping 79-103)",
+             [Press 1]: Trigger Idle Animation (All loop their Idle/FullIdle frames)\n\
+             [Press 2]: Trigger Head Idle Animation (Loops HeadIdle for Peas; loops Idle for Cattail)\n\
+             [Press 3]: Trigger Shooting Animation (Loops Shooting: Peas 54-78, Cattail 24-39)\n\
+             [Press 4]: Trigger Full Idle Animation (All loop their Idle/FullIdle frames)",
             TextStyle {
                 font_size: 16.0,
                 color: Color::WHITE,
@@ -393,7 +468,7 @@ fn tick_timers(time: Res<Time>, mut plant_query: Query<&mut Plant>) {
     }
 }
 
-// Animation system for Peashooter & Repeater
+// Animation system for all plants (Peashooter, Repeater, Cattail)
 fn animate_plant(
     reanim_library: Res<ReanimLibrary>,
     reanim_textures: Res<ReanimTextures>,
@@ -403,28 +478,58 @@ fn animate_plant(
 ) {
     for (plant_entity, mut plant) in &mut plant_query {
         if plant.anim_timer.just_finished() {
-            // 1. Update stem frame (always loops full idle 79-103)
-            plant.stem_frame += 1;
-            if plant.stem_frame > 103 {
-                plant.stem_frame = 79;
-            }
-
-            // 2. Update head frame based on animation state
-            match plant.anim_state {
-                PlantAnimState::Idle | PlantAnimState::FullIdle => {
-                    // Sync head with stem frame for full synchronization in idle state
-                    plant.head_frame = plant.stem_frame;
+            // Update frames based on plant name
+            if plant.anim_name == "cattail" {
+                // Cattail frame bounds:
+                // Idle = 5..=23
+                // Shooting = 24..=39
+                
+                // 1. Update stem/base frame (always loops idle 5..=23)
+                plant.stem_frame += 1;
+                if plant.stem_frame > 23 {
+                    plant.stem_frame = 5;
                 }
-                PlantAnimState::HeadIdle => {
-                    plant.head_frame += 1;
-                    if plant.head_frame > 53 || plant.head_frame < 29 {
-                        plant.head_frame = 29; // Loop Head Idle (frames 29-53)
+
+                // 2. Update head/active frame
+                match plant.anim_state {
+                    PlantAnimState::Idle | PlantAnimState::FullIdle | PlantAnimState::HeadIdle => {
+                        plant.head_frame = plant.stem_frame;
+                    }
+                    PlantAnimState::Shooting => {
+                        plant.head_frame += 1;
+                        if plant.head_frame > 39 || plant.head_frame < 24 {
+                            plant.head_frame = 24;
+                        }
                     }
                 }
-                PlantAnimState::Shooting => {
-                    plant.head_frame += 1;
-                    if plant.head_frame > 78 || plant.head_frame < 54 {
-                        plant.head_frame = 54; // Loop Shooting (frames 54-78)
+            } else {
+                // Peas frame bounds:
+                // Stem Idle = 79..=103 (or 4..=28)
+                // Head Idle = 29..=53
+                // Shooting = 54..=78
+                
+                // 1. Update stem frame (always loops full idle 79-103)
+                plant.stem_frame += 1;
+                if plant.stem_frame > 103 {
+                    plant.stem_frame = 79;
+                }
+
+                // 2. Update head frame based on state
+                match plant.anim_state {
+                    PlantAnimState::Idle | PlantAnimState::FullIdle => {
+                        plant.head_frame = plant.stem_frame;
+                    }
+                    PlantAnimState::HeadIdle => {
+                        plant.head_frame += 1;
+                        if plant.head_frame > 53 || plant.head_frame < 29 {
+                            plant.head_frame = 29;
+                        }
+                    }
+                    PlantAnimState::Shooting => {
+                        plant.head_frame += 1;
+                        if plant.head_frame > 78 || plant.head_frame < 54 {
+                            plant.head_frame = 54;
+                        }
                     }
                 }
             }
@@ -432,27 +537,24 @@ fn animate_plant(
 
         // Apply animations to parts (children)
         if let Ok(children) = parent_query.get(plant_entity) {
-            // Retrieve tracks list for this plant name
             if let Some(tracks) = reanim_library.animations.get(&plant.anim_name) {
                 for &child in children {
                     if let Ok((part, mut sprite, mut transform, mut visibility, mut texture)) = part_query.get_mut(child) {
                         let track = &tracks[part.track_index];
                         
-                        // Fetch head frame data
                         let head_frame_data = if plant.head_frame < track.frames.len() {
                             Some(&track.frames[plant.head_frame])
                         } else {
                             None
                         };
 
-                        // Fetch stem frame data
                         let stem_frame_data = if plant.stem_frame < track.frames.len() {
                             Some(&track.frames[plant.stem_frame])
                         } else {
                             None
                         };
 
-                        // Blending Rule
+                        // Blending Rule: If visible in active head frame, use it; otherwise fallback to stem frame
                         let target_frame_data = if let Some(head_data) = head_frame_data {
                             if head_data.visible {
                                 Some(head_data)
@@ -506,25 +608,47 @@ fn handle_keyboard_triggers(
     for mut plant in &mut plant_query {
         if keyboard_input.just_pressed(KeyCode::Digit1) {
             plant.anim_state = PlantAnimState::Idle;
-            plant.head_frame = 79;
-            plant.stem_frame = 79;
-            info!("Switched state to Idle (Full Plant idle)");
+            if plant.anim_name == "cattail" {
+                plant.head_frame = 5;
+                plant.stem_frame = 5;
+            } else {
+                plant.head_frame = 79;
+                plant.stem_frame = 79;
+            }
+            info!("Switched {} state to Idle", plant.anim_name);
         }
         if keyboard_input.just_pressed(KeyCode::Digit2) {
             plant.anim_state = PlantAnimState::HeadIdle;
-            plant.head_frame = 29;
-            info!("Switched state to Head Idle (Only head animates)");
+            if plant.anim_name == "cattail" {
+                plant.head_frame = 5;
+                plant.stem_frame = 5;
+            } else {
+                plant.head_frame = 29;
+                plant.stem_frame = 79;
+            }
+            info!("Switched {} state to Head Idle", plant.anim_name);
         }
         if keyboard_input.just_pressed(KeyCode::Digit3) {
             plant.anim_state = PlantAnimState::Shooting;
-            plant.head_frame = 54;
-            info!("Switched state to Shooting (Head shoots, Stem stays idle)");
+            if plant.anim_name == "cattail" {
+                plant.head_frame = 24;
+                plant.stem_frame = 5;
+            } else {
+                plant.head_frame = 54;
+                plant.stem_frame = 79;
+            }
+            info!("Switched {} state to Shooting", plant.anim_name);
         }
         if keyboard_input.just_pressed(KeyCode::Digit4) {
             plant.anim_state = PlantAnimState::FullIdle;
-            plant.head_frame = 79;
-            plant.stem_frame = 79;
-            info!("Switched state to Full Idle (Full Plant idle)");
+            if plant.anim_name == "cattail" {
+                plant.head_frame = 5;
+                plant.stem_frame = 5;
+            } else {
+                plant.head_frame = 79;
+                plant.stem_frame = 79;
+            }
+            info!("Switched {} state to Full Idle", plant.anim_name);
         }
     }
 }
